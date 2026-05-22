@@ -142,8 +142,34 @@ function fmt_time(string $d): string {
 }
 
 /* ── Countdown: 24 jam dari created_at ── */
-$deadline_ts   = strtotime($res['tanggal_booking']) + (24 * 60 * 60);
-$deadline_disp = date('d M Y, H:i', $deadline_ts);
+$deadline_ts   = strtotime($res['tanggal_booking']) + (2*60*60);
+$deadline_disp = date('H:i', $deadline_ts);
+
+/* ── AUTO CANCEL jika waktu habis ── */
+if (
+    time() > $deadline_ts &&
+    $res['status'] !== 'confirmed' &&
+    $res['status'] !== 'cancelled'
+) {
+
+    // ubah status reservation
+    mysqli_query($conn, "
+        UPDATE reservations
+        SET status = 'cancelled'
+        WHERE id_reservation = '$id_reservation'
+    ");
+
+    // kembalikan stok tiket
+    mysqli_query($conn, "
+        UPDATE ticket_categories tc
+        JOIN reservations r
+        ON tc.id_category = r.id_category
+        SET tc.stok = tc.stok + r.quantity
+        WHERE r.id_reservation = '$id_reservation'
+    ");
+
+    $res['status'] = 'cancelled';
+}
 
 $page_title  = 'Pembayaran';
 $extra_css   = [];
@@ -525,6 +551,62 @@ $extra_css   = [];
     </div>
     <?php endif; ?>
 
+    <!-- ── Cancelled overlay ── -->
+     <?php if ($res['status'] === 'cancelled'): ?>
+
+<div class="success-overlay open" id="cancelOverlay">
+  <div class="success-box">
+
+    <div class="success-icon"
+         style="
+            background:linear-gradient(135deg,#FEE2E2,#FECACA);
+            box-shadow:0 8px 30px rgba(239,68,68,.25);
+         ">
+
+      <svg width="36"
+           height="36"
+           viewBox="0 0 24 24"
+           fill="none"
+           stroke="#DC2626"
+           stroke-width="2.5">
+
+        <line x1="18" y1="6" x2="6" y2="18"/>
+        <line x1="6" y1="6" x2="18" y2="18"/>
+
+      </svg>
+    </div>
+
+    <h2 class="success-title">Pembayaran Dibatalkan!</h2>
+
+    <p class="success-text">
+      Waktu pembayaran telah habis.
+      Reservasi kamu otomatis dibatalkan dan tiket dikembalikan ke stok.
+    </p>
+
+    <div style="display:flex;flex-direction:column;gap:.75rem;">
+
+      <a href="<?= BASE_URL ?>/my_reservations.php"
+         class="btn btn-primary w-full btn-lg">
+
+        Lihat Reservasi
+
+      </a>
+
+      <a href="<?= BASE_URL ?>/index.php"
+         class="btn btn-ghost w-full">
+
+        Kembali ke Beranda
+
+      </a>
+
+    </div>
+
+  </div>
+</div>
+
+<?php endif; ?>
+
+
     <!-- ── Page header ── -->
     <div class="pay-header">
       <div class="container">
@@ -551,7 +633,9 @@ $extra_css   = [];
             <div>
               <div class="countdown-label">⏰ Batas Waktu</div>
               <div class="countdown-timer" id="countdownTimer">--:--:--</div>
-              <div style="font-size:0.62rem;color:#92400E;margin-top:1px;"><?= $deadline_disp ?></div>
+              <div style="font-size:0.7rem;color:#92400E;margin-top:3px;font-weight:600;">
+    Berakhir pukul <?= $deadline_disp ?> WIB
+</div>
             </div>
           </div>
         </div>
@@ -671,9 +755,9 @@ $extra_css   = [];
             </div>
             <div class="info-box__list">
               <div class="info-box__item">Transfer sesuai nominal yang tertera — pembayaran berbeda akan memperlambat verifikasi.</div>
-              <div class="info-box__item">Upload bukti transfer yang jelas dan terbaca (min. 300KB).</div>
+              <div class="info-box__item">Upload bukti transfer yang jelas dan terbaca (min. 5MB).</div>
               <div class="info-box__item">Batas pembayaran <strong><?= $deadline_disp ?></strong>. Lewat batas, reservasi otomatis dibatalkan.</div>
-              <div class="info-box__item">Tiket digital dikirim via email setelah pembayaran terverifikasi (maks. 1×24 jam).</div>
+              <div class="info-box__item">Tiket digital dikirim via email setelah pembayaran terverifikasi (maks 24 jam).</div>
               <div class="info-box__item">Hubungi support jika pembayaran belum dikonfirmasi lebih dari 24 jam.</div>
             </div>
           </div>
@@ -830,11 +914,22 @@ $extra_css   = [];
     const now  = Date.now();
     const diff = deadline - now;
     if (diff <= 0) {
-      timerEl.textContent = 'WAKTU HABIS';
-      pillEl.classList.add('expired');
-      clearInterval(countdownInterval);
-      return;
-    }
+
+  timerEl.textContent = 'WAKTU HABIS';
+  pillEl.classList.add('expired');
+
+  clearInterval(countdownInterval);
+
+  // disable tombol pembayaran
+  submitBtn.disabled = true;
+
+  // reload halaman agar status jadi cancelled
+  setTimeout(() => {
+    location.reload();
+  }, 1500);
+
+  return;
+}
     const h = Math.floor(diff / 3600000);
     const m = Math.floor((diff % 3600000) / 60000);
     const s = Math.floor((diff % 60000) / 1000);
