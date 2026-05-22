@@ -1,0 +1,358 @@
+/* ============================================================
+   MY RESERVATIONS — Reservation Cards · Timeline · Status
+   ============================================================ */
+
+/* ── Page Header ── */
+.res-page-header {
+  background: linear-gradient(135deg, var(--white) 0%, var(--blue-50) 100%);
+  border-bottom: 1px solid var(--blue-100);
+  padding-block: var(--sp-10) var(--sp-8);
+}
+.res-page-header .container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--sp-4);
+}
+.res-page-title {
+  font-family: var(--font-display);
+  font-size: var(--text-3xl);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+.res-page-sub {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  margin-top: var(--sp-1);
+}
+
+/* ── Stats bar ── */
+.res-stats {
+  display: flex;
+  gap: var(--sp-6);
+  margin-top: var(--sp-6);
+  flex-wrap: wrap;
+}
+.res-stat {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+.res-stat-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: var(--r-full);
+  flex-shrink: 0;
+}
+.res-stat-dot--all {
+  background: var(--blue-400);
+}
+.res-stat-dot--active {
+  background: var(--color-success);
+}
+.res-stat-dot--pending {
+  background: var(--color-warning);
+}
+.res-stat-dot--cancel {
+  background: var(--color-danger);
+}
+.res-stat strong {
+  font-weight: 700;
+  color: var(--color-text);
+  font-family: var(--font-display);
+  font-size: var(--text-md);
+}
+
+/* ── Filter tabs ── */
+.res-tabs {
+  display: flex;
+  gap: var(--sp-2);
+  padding-block: var(--sp-6);
+  border-bottom: 1px solid var(--color-border);
+  flex-wrap: wrap;
+}
+.res-tab {
+  padding: 8px var(--sp-5);
+  border-radius: var(--r-full);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  cursor: pointer;
+  background: transparent;
+  border: 1.5px solid var(--color-border-md);
+  color: var(--color-text-muted);
+  transition: all var(--dur-fast);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+.res-tab:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  background: var(--blue-50);
+}
+.res-tab.active {
+  background: var(--grad-brand);
+  border-color: transparent;
+  color: #fff;
+  box-shadow: 0 3px 12px rgba(37, 99, 235, 0.32);
+}
+.res-tab__count {
+  font-size: 0.68rem;
+  padding: 1px 6px;
+  border-radius: var(--r-full);
+  background: rgba(255, 255, 255, 0.25);
+}
+.res-tab:not(.active) .res-tab__count {
+  background: var(--blue-100);
+  color: var(--blue-700);
+}
+
+/* ── Reservation Card ── */
+.res-card {
+  background: var(--color-surface);
+  border-radius: var(--r-xl);
+  border: 1px solid var(--color-border);
+  display: flex;
+  overflow: hidden;
+  transition: all var(--dur-med) var(--ease-out);
+}
+.res-card:hover {
+  box-shadow: var(--shadow-lg);
+  border-color: var(--blue-200);
+  transform: translateY(-2px);
+}
+
+.res-card__img {
+  width: 180px;
+  flex-shrink: 0;
+  background: linear-gradient(135deg, var(--blue-100), var(--blue-200));
+  position: relative;
+  overflow: hidden;
+}
+.res-card__img img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.res-card__img-placeholder {
+  padding: 0;
+  overflow: hidden;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.5rem;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+.res-card__img-date {
+  position: absolute;
+  bottom: var(--sp-3);
+  left: var(--sp-3);
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(8px);
+  border-radius: var(--r-md);
+  padding: 5px 10px;
+  text-align: center;
+}
+.res-card__img-day {
+  font-size: 1.3rem;
+  font-weight: 800;
+  color: var(--color-primary);
+  line-height: 1;
+  font-family: var(--font-display);
+}
+.res-card__img-mon {
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--gray-500);
+  font-weight: 600;
+}
+
+.res-card__body {
+  flex: 1;
+  padding: var(--sp-5) var(--sp-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  min-width: 0;
+}
+.res-card__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-4);
+}
+.res-card__title {
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  font-weight: 700;
+  color: var(--color-text);
+  letter-spacing: -0.01em;
+}
+.res-card__id {
+  font-size: var(--text-xs);
+  color: var(--color-text-light);
+  font-weight: 500;
+  margin-top: 2px;
+}
+
+.res-card__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-4);
+}
+.res-meta-item {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+.res-meta-item svg {
+  width: 13px;
+  height: 13px;
+  color: var(--blue-400);
+  flex-shrink: 0;
+}
+.res-meta-item strong {
+  color: var(--color-text);
+  font-weight: 600;
+}
+
+.res-card__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  padding-top: var(--sp-3);
+  border-top: 1px solid var(--color-border);
+  margin-top: auto;
+  flex-wrap: wrap;
+}
+.res-card__price {
+  font-family: var(--font-display);
+  font-size: var(--text-xl);
+  font-weight: 800;
+  color: var(--color-primary);
+}
+.res-card__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+/* Status line indicator */
+.res-card--active {
+  border-left: 4px solid var(--color-success);
+}
+.res-card--pending {
+  border-left: 4px solid var(--color-warning);
+}
+.res-card--done {
+  border-left: 4px solid var(--blue-400);
+}
+.res-card--cancel {
+  border-left: 4px solid var(--color-danger);
+  opacity: 0.75;
+}
+
+/* ── Empty state ── */
+.res-empty {
+  text-align: center;
+  padding: var(--sp-24) var(--sp-8);
+}
+.res-empty__icon {
+  width: 80px;
+  height: 80px;
+  border-radius: var(--r-2xl);
+  background: var(--blue-50);
+  border: 2px solid var(--blue-100);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto var(--sp-6);
+  font-size: 2.2rem;
+}
+.res-empty__title {
+  font-family: var(--font-display);
+  font-size: var(--text-xl);
+  font-weight: 700;
+  margin-bottom: var(--sp-3);
+}
+.res-empty__text {
+  color: var(--color-text-muted);
+  max-width: 360px;
+  margin: 0 auto var(--sp-6);
+}
+
+/* ── Reservation Detail Modal (if needed) ── */
+.res-detail-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--sp-4);
+}
+.res-detail-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.res-detail-label {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.res-detail-value {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+/* ── Responsive ── */
+@media (max-width: 640px) {
+  .res-card {
+    flex-direction: column;
+  }
+  .res-card__img {
+    width: 100%;
+    height: 160px;
+  }
+  .res-card--active,
+  .res-card--pending,
+  .res-card--done,
+  .res-card--cancel {
+    border-left: none;
+    border-top-width: 4px;
+  }
+  .res-detail-grid {
+    grid-template-columns: 1fr;
+  }
+  .res-stats {
+    gap: var(--sp-4);
+  }
+}
+
+.waiting-payment {
+  background: #fff3cd;
+  color: #b7791f;
+  padding: 10px 16px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.payment-success {
+  background: #dcfce7;
+  color: #15803d;
+  padding: 10px 16px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 600;
+}
