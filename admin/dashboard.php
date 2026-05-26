@@ -2,6 +2,8 @@
 session_start();
 define('BASE_URL', '..');
 
+require_once '../config/koneksi.php';
+
 // Guard: only admin
 if (!isset($_SESSION['user_id']) || ($_SESSION['user_role'] ?? '') !== 'admin') {
   header('Location: ' . BASE_URL . '/login.php');
@@ -15,27 +17,211 @@ $admin_name = $_SESSION['user_name'] ?? 'Admin';
 $initials   = strtoupper(substr($admin_name, 0, 2));
 
 // Simulasi data (ganti dengan query DB)
+// TOTAL EVENT
+$qEvent = mysqli_query($conn, "
+    SELECT COUNT(*) as total_event
+    FROM events
+");
+
+$totalEvent = mysqli_fetch_assoc($qEvent)['total_event'];
+
+// TOTAL RESERVASI
+$qReservasi = mysqli_query($conn, "
+    SELECT COUNT(*) as total_reservasi
+    FROM reservations
+    WHERE status = 'confirmed'
+");
+
+$totalReservasi = mysqli_fetch_assoc($qReservasi)['total_reservasi'];
+
+// TOTAL PENDAPATAN
+$qPendapatan = mysqli_query($conn, "
+    SELECT SUM(total_harga) as total_pendapatan
+    FROM reservations
+    WHERE status = 'confirmed'
+");
+
+$dataPendapatan = mysqli_fetch_assoc($qPendapatan);
+
+$totalPendapatan =
+    $dataPendapatan['total_pendapatan'] ?? 0;
+
+// TOTAL USER
+$qUser = mysqli_query($conn, "
+    SELECT COUNT(*) as total_user
+    FROM users
+");
+
+$totalUser = mysqli_fetch_assoc($qUser)['total_user'];
+function short_number($num){
+
+    if($num >= 1000000000){
+        return number_format($num / 1000000000, 1) . ' M';
+    }
+
+    if($num >= 1000000){
+        return number_format($num / 1000000, 1) . ' Jt';
+    }
+
+    if($num >= 1000){
+        return number_format($num / 1000, 1) . ' K';
+    }
+
+    return $num;
+}
 $stats = [
-  ['label'=>'Total Event',       'value'=>'48',    'change'=>'+12%', 'up'=>true,  'type'=>'blue',   'icon'=>'calendar'],
-  ['label'=>'Reservasi Aktif',   'value'=>'1.24K', 'change'=>'+8%',  'up'=>true,  'type'=>'green',  'icon'=>'ticket'],
-  ['label'=>'Pendapatan Bulan',  'value'=>'48.2M', 'change'=>'+23%', 'up'=>true,  'type'=>'yellow', 'icon'=>'money'],
-  ['label'=>'Users Terdaftar',   'value'=>'3.8K',  'change'=>'+5%',  'up'=>true,  'type'=>'blue',   'icon'=>'users'],
+
+  [
+    'label'=>'Total Event',
+    'value'=>$totalEvent,
+    'change'=>'+12%',
+    'up'=>true,
+    'type'=>'blue',
+    'icon'=>'calendar'
+  ],
+
+  [
+    'label'=>'Reservasi Aktif',
+    'value'=>$totalReservasi,
+    'change'=>'+8%',
+    'up'=>true,
+    'type'=>'green',
+    'icon'=>'ticket'
+  ],
+
+  [
+    'label'=>'Pendapatan Bulan',
+    'value'=>'Rp ' . short_number($totalPendapatan),
+    'change'=>'+23%',
+    'up'=>true,
+    'type'=>'yellow',
+    'icon'=>'money'
+  ],
+
+  [
+    'label'=>'Users Terdaftar',
+    'value'=>$totalUser,
+    'change'=>'+5%',
+    'up'=>true,
+    'type'=>'blue',
+    'icon'=>'users'
+  ],
+
 ];
 
-$recent_reservations = [
-  ['id'=>'RES-001','user'=>'Budi Santoso',   'event'=>'Tech Summit 2025',      'seats'=>2,'total'=>300000,'status'=>'active'],
-  ['id'=>'RES-002','user'=>'Sari Dewi',      'event'=>'Music Festival',        'seats'=>1,'total'=>200000,'status'=>'pending'],
-  ['id'=>'RES-003','user'=>'Ahmad Rizki',    'event'=>'Design Workshop',       'seats'=>3,'total'=>225000,'status'=>'active'],
-  ['id'=>'RES-004','user'=>'Linda Kusuma',   'event'=>'Startup Pitch Night',   'seats'=>2,'total'=>0,     'status'=>'active'],
-  ['id'=>'RES-005','user'=>'Deni Pratama',   'event'=>'Photography Class',     'seats'=>1,'total'=>120000,'status'=>'cancel'],
-];
+// RESERVASI TERBARU
+$qRecent = mysqli_query($conn, "
 
-$recent_events = [
-  ['title'=>'Tech Summit Jakarta', 'date'=>'20 Jul','slots'=>45, 'sold'=>155,'price'=>150000],
-  ['title'=>'Music Festival',      'date'=>'02 Aug','slots'=>12, 'sold'=>988,'price'=>200000],
-  ['title'=>'Design Workshop',     'date'=>'15 Aug','slots'=>30, 'sold'=>70, 'price'=>75000],
-];
+SELECT
+    reservations.id_reservation,
+    reservations.quantity,
+    reservations.total_harga,
+    reservations.status,
 
+    users.nama as nama_user,
+
+    events.nama_event
+
+FROM reservations
+
+
+LEFT JOIN users
+ON reservations.id_user = users.id_user
+
+LEFT JOIN events
+ON reservations.id_event = events.id_event
+
+WHERE reservations.status = 'confirmed'
+
+ORDER BY reservations.created_at DESC
+
+LIMIT 5
+
+");
+
+$recent_reservations = [];
+
+while($row = mysqli_fetch_assoc($qRecent)){
+
+    $recent_reservations[] = [
+
+        'id' =>
+            'RES-' . $row['id_reservation'],
+
+        'user' =>
+            $row['nama_user'],
+
+        'event' =>
+            $row['nama_event'],
+
+        'seats' =>
+            $row['quantity'],
+
+        'total' =>
+            $row['total_harga'],
+
+        'status' =>
+            $row['status']
+
+    ];
+}
+
+// TOP EVENTS
+$qTop = mysqli_query($conn, "
+
+SELECT
+
+    events.id_event,
+    events.nama_event,
+    events.tanggal,
+
+    /* TOTAL STOK */
+    (
+        SELECT COALESCE(SUM(stok),0)
+        FROM ticket_categories
+        WHERE ticket_categories.id_event = events.id_event
+    ) as total_slots,
+
+    /* TOTAL SOLD */
+    (
+        SELECT COALESCE(SUM(quantity),0)
+        FROM reservations
+        WHERE reservations.id_event = events.id_event
+        AND reservations.status = 'confirmed'
+    ) as total_sold
+
+FROM events
+
+ORDER BY total_sold DESC
+
+LIMIT 3
+
+");
+
+$recent_events = [];
+
+while($row = mysqli_fetch_assoc($qTop)){
+
+    $sold = $row['total_sold'] ?? 0;
+
+    $slots = $row['total_slots'];
+
+    $recent_events[] = [
+
+        'title' =>
+            $row['nama_event'],
+
+        'date' =>
+            date('d M', strtotime($row['tanggal'])),
+
+        'slots' =>
+            $slots,
+
+        'sold' =>
+            $sold,
+
+    ];
+}
 function fmt_price($p) {
   return $p > 0 ? 'Rp ' . number_format($p, 0, ',', '.') : 'Gratis';
 }
@@ -61,10 +247,22 @@ function svg_icon($name) {
 }
 
 $status_badge = [
-  'active'  => ['class'=>'badge-green',  'label'=>'Aktif'],
-  'pending' => ['class'=>'badge-yellow', 'label'=>'Pending'],
-  'cancel'  => ['class'=>'badge-red',    'label'=>'Batal'],
-  'done'    => ['class'=>'badge-blue',   'label'=>'Selesai'],
+
+  'confirmed' => [
+      'class'=>'badge-green',
+      'label'=>'Confirmed'
+  ],
+
+  'pending' => [
+      'class'=>'badge-yellow',
+      'label'=>'Pending'
+  ],
+
+  'cancelled' => [
+      'class'=>'badge-red',
+      'label'=>'Cancelled'
+  ],
+
 ];
 ?>
 <?php require_once __DIR__ . '/../templates/head.php'; ?>
@@ -233,7 +431,6 @@ $status_badge = [
                 <th>Kursi</th>
                 <th>Total</th>
                 <th>Status</th>
-                <th>Aksi</th>
               </tr>
             </thead>
             <tbody>
@@ -258,18 +455,7 @@ $status_badge = [
                   </td>
                   <td><strong><?= $res['seats'] ?></strong></td>
                   <td><strong style="color:var(--color-primary)"><?= fmt_price($res['total']) ?></strong></td>
-                  <td><span class="badge <?= $st['class'] ?>"><?= $st['label'] ?></span></td>
-                  <td>
-                    <div class="table-actions">
-                      <button class="btn btn-ghost btn-xs" title="Edit">
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                      </button>
-                      <button class="btn btn-ghost btn-xs" style="color:var(--color-danger)" title="Hapus"
-                        onclick="return confirm('Hapus reservasi ini?')">
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg>
-                      </button>
-                    </div>
-                  </td>
+                  <td><span class="badge <?= $st['class'] ?>"><?= $st['label'] ?></span></td>                 
                 </tr>
               <?php endforeach; ?>
             </tbody>
@@ -293,7 +479,7 @@ $status_badge = [
                   <span style="font-size:var(--text-xs);color:var(--color-text-muted);flex-shrink:0;"><?= $ev['date'] ?></span>
                 </div>
                 <!-- Progress bar -->
-                <?php $pct = min(100, round($ev['sold'] / max(1, $ev['sold'] + $ev['slots']) * 100)); ?>
+                <?php $pct = min(100,round(($ev['sold'] / max(1, $ev['slots'])) * 100)); ?>
                 <div style="display:flex;align-items:center;gap:0.5rem;">
                   <div style="flex:1;height:6px;background:var(--blue-100);border-radius:99px;overflow:hidden;">
                     <div style="height:100%;width:<?= $pct ?>%;background:var(--grad-brand);border-radius:99px;transition:width 0.6s ease;"></div>
@@ -301,7 +487,7 @@ $status_badge = [
                   <span style="font-size:var(--text-xs);font-weight:700;color:var(--color-primary);min-width:30px;text-align:right;"><?= $pct ?>%</span>
                 </div>
                 <div style="font-size:var(--text-xs);color:var(--color-text-muted);">
-                  <?= $ev['sold'] ?> terjual · <?= $ev['slots'] ?> sisa
+                  <?= $ev['sold'] ?> tiket terjual
                 </div>
               </div>
               <hr style="border:none;border-top:1px solid var(--color-border);">

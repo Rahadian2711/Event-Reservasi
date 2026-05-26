@@ -12,6 +12,7 @@ $id = $_GET['id'] ?? 0;
 $query = mysqli_query($conn, "
     SELECT * FROM events
     WHERE id_event = '$id'
+    AND status = 'published'
 ");
 
 $event = mysqli_fetch_assoc($query);
@@ -57,6 +58,11 @@ $ticket_categories = [];
 
 while ($row = mysqli_fetch_assoc($queryKategori)) {
     $ticket_categories[] = $row;
+}
+$total_stok = 0;
+
+foreach ($ticket_categories as $ticket) {
+    $total_stok += $ticket['stok'];
 }
 
 
@@ -234,7 +240,7 @@ function fmt_price($p) {
             <div>
               <div style="display:flex;gap:0.5rem;margin-bottom:0.75rem;flex-wrap:wrap;">
                 <span class="badge badge-blue"><?= htmlspecialchars($event['kategori']) ?></span>
-                <?php if ($event['slots'] < 20): ?>
+                <?php if ($total_stok < 20): ?>
                   <span class="badge badge-red">⚡ Hampir habis</span>
                 <?php endif; ?>
                 <?php if ($ticket_categories[0]['harga'] == 0): ?>
@@ -266,7 +272,7 @@ function fmt_price($p) {
             </div>
             <div class="detail-meta-item">
               <span class="detail-meta-label">🎟 Kursi Tersedia</span>
-              <span class="detail-meta-value"><?= $event['slots'] ?> kursi</span>
+              <span class="detail-meta-value"><?= $total_stok ?> kursi</span>
             </div>
           </div>
 
@@ -375,7 +381,7 @@ function fmt_price($p) {
                     <div class="form-group">
                       <label class="form-label" for="seats">Jumlah Kursi</label>
                       <select class="form-select" id="seats" name="seats" onchange="updateTotal(this.value)">
-                        <?php for ($i = 1; $i <= min(5, $event['slots']); $i++): ?>
+                        <?php for ($i = 1; $i <= min(5, $total_stok); $i++): ?>
                           <option value="<?= $i ?>"><?= $i ?> kursi</option>
                         <?php endfor; ?>
                       </select>

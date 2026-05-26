@@ -17,6 +17,8 @@ FROM events
 LEFT JOIN ticket_categories
 ON events.id_event = ticket_categories.id_event
 
+WHERE events.status = 'published'
+
 GROUP BY events.id_event
 
 ORDER BY events.created_at DESC

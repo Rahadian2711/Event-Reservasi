@@ -16,11 +16,18 @@ require_once __DIR__ . '/../config/koneksi.php';
 $query = "
 SELECT
     events.*,
-    MIN(ticket_categories.harga) AS harga_mulai
+
+    MIN(ticket_categories.harga) AS harga_mulai,
+
+    COALESCE(SUM(ticket_categories.stok),0) AS total_stok
+
 FROM events
+
 LEFT JOIN ticket_categories
 ON events.id_event = ticket_categories.id_event
+
 GROUP BY events.id_event
+
 ORDER BY events.created_at DESC
 ";
 
@@ -36,10 +43,15 @@ while ($row = mysqli_fetch_assoc($result)) {
     'date'   => date('d M Y', strtotime($row['tanggal'])),
     'cat'    => $row['kategori'],
     'price'  => $row['harga_mulai'],
-    'slots'  => $row['slots'],
     'sold'   => 0,
-    'status' => $row['status'],
-    'gambar' => $row['gambar']
+    'slots'  => $row['total_stok'],
+    'status'     => $row['status'],
+    'gambar'     => $row['gambar'],
+    'location'   => $row['lokasi'],
+    'organizer'  => $row['organizer'],
+    'description'=> $row['deskripsi'],
+    'time'       => date('H:i', strtotime($row['tanggal'])),
+    'tags'       => $row['tags'] ?? ''
   ];
 }
 
@@ -156,7 +168,7 @@ $action = $_GET['action'] ?? '';
         <p class="admin-page-sub">Tambah, edit, dan publikasikan event untuk pengguna.</p>
       </div>
       <div class="admin-page-actions">
-        <button class="btn btn-primary btn-sm" onclick="openModal('addModal')">
+        <button class="btn btn-primary btn-sm" onclick="resetEventForm()">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
           Tambah Event
         </button>
@@ -206,7 +218,15 @@ $action = $_GET['action'] ?? '';
                 <td>
                   <div class="table-avatar">
                     <div class="table-avatar-img" style="border-radius:var(--r-md);font-size:1.1rem;background:var(--blue-100);">
-                      <?= ['💻','🎵','🎨','🚀','📷','🍜'][$i % 6] ?>
+                        <?php
+                        $catIcons = [
+                            'Music'=>'🎵','Technology'=>'💻','Design'=>'🎨',
+                            'Business'=>'🚀','Art'=>'🖼️','Culinary'=>'🍜',
+                            'Sport'=>'⚽','Education'=>'📚','Film'=>'🎬',
+                            'Gaming'=>'🎮','Health'=>'❤️','Fashion'=>'👗',
+                        ];
+                        echo $catIcons[$ev['cat']] ?? '🎟';
+                        ?>
                     </div>
                     <div>
                       <div class="table-name"><?= htmlspecialchars($ev['title']) ?></div>
@@ -234,17 +254,41 @@ $action = $_GET['action'] ?? '';
                   </span>
                 </td>
                 <td>
-                  <div class="table-actions" style="justify-content:center;">
-                    <button class="btn btn-outline btn-xs" onclick="openModal('editModal')" title="Edit">
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                      Edit
-                    </button>
-                    <button class="btn btn-ghost btn-xs" style="color:var(--color-danger)"
-                      onclick="return confirm('Hapus event ini?')" title="Hapus">
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg>
-                    </button>
-                  </div>
-                </td>
+                <div class="table-actions" style="justify-content:center;">
+
+                  <!-- EDIT -->
+                  <a 
+                    href="#"onclick='editEvent(<?= json_encode($ev) ?>)'
+                    class="btn btn-outline btn-xs"
+                    title="Edit"
+                  >
+
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                    </svg>
+
+                    Edit
+                  </a>
+
+                  <!-- DELETE -->
+                  <a 
+                    href="../process/event_delete.php?id=<?= $ev['id'] ?>"
+                    class="btn btn-ghost btn-xs"
+                    style="color:var(--color-danger)"
+                    onclick="return confirm('Hapus event ini?')"
+                    title="Hapus"
+                  >
+
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <polyline points="3 6 5 6 21 6"/>
+                      <path d="M19 6l-1 14H6L5 6"/>
+                    </svg>
+
+                  </a>
+
+                </div>
+              </td>
               </tr>
             <?php endforeach; ?>
           </tbody>
@@ -281,14 +325,46 @@ $action = $_GET['action'] ?? '';
       </button>
     </div>
     <form 
-    action="../process/event_store.php"
-    method="POST"
-    enctype="multipart/form-data"
->
+      action="../process/event_store.php"
+      method="POST"
+      enctype="multipart/form-data"
+    >
+
+      <input
+          type="hidden"
+          name="id_event"
+          id="id_event"
+      >
       <div class="modal-body">
         <div class="form-group">
+    <label class="form-label">Nama Event</label>
+    <input
+        class="form-input"
+        type="text"
+        name="nama_event"
+        id="edit_nama_event"
+        placeholder="Masukkan nama event"
+        required
+    >
+</div>
+        <div class="form-group">
     <label>Gambar Event</label>
+    <!-- Preview gambar lama (muncul saat edit) -->
+    <div id="currentImageWrap" style="display:none;margin-bottom:0.75rem;">
+        <p style="font-size:0.75rem;color:var(--color-text-muted);margin-bottom:0.4rem;font-weight:600;">Gambar saat ini:</p>
+        <img id="currentImage" src="" alt="Gambar event"
+             style="width:100%;max-height:160px;object-fit:cover;border-radius:var(--r-md);border:1.5px solid var(--blue-200);">
+        <p style="font-size:0.72rem;color:var(--color-text-light);margin-top:0.3rem;">Kosongkan upload jika tidak ingin mengganti gambar.</p>
+    </div>
     <input type="file" name="gambar" class="form-input">
+    <div class="form-group">
+    <label class="form-label">Detail Gambar</label>
+    <input
+        type="file"
+        name="detail_gambar"
+        class="form-input"
+    >
+</div>
 </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
           <div class="form-group">
@@ -315,23 +391,154 @@ $action = $_GET['action'] ?? '';
         </div>
         <div class="form-group">
           <label class="form-label">Lokasi</label>
-          <input class="form-input" type="text" name="location" placeholder="Nama venue, kota...">
+          <input class="form-input" type="text" name="location" id="edit_location" placeholder="Nama venue, kota...">
         </div>
         <div class="form-group">
-          <label class="form-label">Kapasitas Kursi</label>
-          <input class="form-input" type="number" name="slots" placeholder="100" min="1">
-        </div>
+    <label class="form-label">Organizer</label>
+    <input
+        class="form-input"
+        type="text"
+        name="organizer"
+        id="edit_organizer"
+        placeholder="Nama organizer"
+    >
+</div>
         <div class="form-group">
           <label class="form-label">Deskripsi</label>
-          <textarea class="form-textarea" name="description" rows="4" placeholder="Deskripsi singkat event..."></textarea>
+          <textarea class="form-textarea" name="description" id="edit_description" rows="4" placeholder="Deskripsi singkat event..."></textarea>
         </div>
         <div class="form-group">
+    <label class="form-label">Event Tags</label>
+
+    <input
+        class="form-input"
+        type="text"
+        name="tags"
+        placeholder="music, concert, festival"
+    >
+
+    <small style="color:#94A3B8;">
+        Pisahkan dengan koma
+    </small>
+</div>
+        <div class="form-group">
           <label class="form-label">Status Publikasi</label>
-          <select class="form-select" name="status">
+          <select class="form-select" name="status" >
             <option value="draft">Draft</option>
             <option value="published">Published</option>
+          <option value="archived">Archived</option>
           </select>
         </div>
+        <hr>
+
+<hr>
+
+<div style="
+display:flex;
+justify-content:space-between;
+align-items:center;
+margin-bottom:1rem;
+">
+
+    <h3 style="font-size:18px;">
+        Ticket Category
+    </h3>
+
+    <button
+        type="button"
+        id="addTicket"
+        class="btn btn-outline btn-sm"
+    >
+        + Tambah Ticket
+    </button>
+
+</div>
+
+<div id="ticketWrapper">
+
+    <div class="ticket-item"
+    style="
+    display:grid;
+    grid-template-columns:1fr 1fr 1fr;
+    gap:1rem;
+    margin-bottom:1rem;
+    ">
+
+        <input
+            class="form-input"
+            type="text"
+            name="ticket_name[]"
+            placeholder="VIP"
+        >
+
+        <input
+            class="form-input"
+            type="number"
+            name="ticket_price[]"
+            placeholder="500000"
+        >
+
+        <input
+            class="form-input"
+            type="number"
+            name="ticket_stock[]"
+            placeholder="100"
+        >
+
+    </div>
+
+</div>
+
+
+<hr>
+<div style="
+display:flex;
+justify-content:space-between;
+align-items:center;
+margin-bottom:1rem;
+">
+
+    <h3 style="font-size:18px;">
+        Event Schedule
+    </h3>
+
+    <button
+        type="button"
+        id="addSchedule"
+        class="btn btn-outline btn-sm"
+    >
+        + Tambah Jadwal
+    </button>
+
+</div>
+
+<div id="scheduleWrapper">
+
+    <div class="schedule-item"
+    style="
+    display:grid;
+    grid-template-columns:1fr 2fr;
+    gap:1rem;
+    margin-bottom:1rem;
+    ">
+
+        <input
+            type="text"
+            name="schedule_jam[]"
+            class="form-input"
+            placeholder="08:00"
+        >
+
+        <input
+            type="text"
+            name="schedule_kegiatan[]"
+            class="form-input"
+            placeholder="Open Gate"
+        >
+
+    </div>
+
+</div>
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-ghost" onclick="closeModal('addModal')">Batal</button>
@@ -382,6 +589,243 @@ if (search) {
       row.style.display = row.textContent.toLowerCase().includes(q) ? '' : 'none';
     });
   });
+}
+/*
+|--------------------------------------------------------------------------
+| ADD TICKET CATEGORY
+|--------------------------------------------------------------------------
+*/
+
+document
+.getElementById('addTicket')
+.addEventListener('click', function(){
+
+    let html = `
+
+    <div class="ticket-item"
+    style="
+    display:grid;
+    grid-template-columns:1fr 1fr 1fr;
+    gap:1rem;
+    margin-bottom:1rem;
+    ">
+
+        <input
+            class="form-input"
+            type="text"
+            name="ticket_name[]"
+            placeholder="VIP"
+        >
+
+        <input
+            class="form-input"
+            type="number"
+            name="ticket_price[]"
+            placeholder="500000"
+        >
+
+        <input
+            class="form-input"
+            type="number"
+            name="ticket_stock[]"
+            placeholder="100"
+        >
+
+    </div>
+
+    `;
+
+    document
+    .getElementById('ticketWrapper')
+    .insertAdjacentHTML('beforeend', html);
+
+});
+
+/*
+|--------------------------------------------------------------------------
+| ADD EVENT SCHEDULE
+|--------------------------------------------------------------------------
+*/
+
+document
+.getElementById('addSchedule')
+.addEventListener('click', function(){
+
+    let html = `
+
+    <div class="schedule-item"
+    style="
+    display:grid;
+    grid-template-columns:1fr 2fr;
+    gap:1rem;
+    margin-bottom:1rem;
+    ">
+
+        <input
+            type="text"
+            name="schedule_jam[]"
+            class="form-input"
+            placeholder="08:00"
+        >
+
+        <input
+            type="text"
+            name="schedule_kegiatan[]"
+            class="form-input"
+            placeholder="Performance"
+        >
+
+    </div>
+
+    `;
+
+    document
+    .getElementById('scheduleWrapper')
+    .insertAdjacentHTML('beforeend', html);
+
+});
+
+
+function editEvent(data)
+{
+    // Reset form dulu agar field lama tidak tersisa
+    document.querySelector('#addModal form').reset();
+
+    // Buka modal
+    openModal('addModal');
+
+    // ── Ubah judul modal jadi "Edit Event" ──
+    document.querySelector('#addModal .modal-title')
+        .innerText = '✏️ Edit Event';
+
+    // ── Ubah teks tombol submit ──
+    document.querySelector('#addModal button[type="submit"]')
+        .innerText = 'Update Event';
+
+    // ── Ubah action form ke endpoint update ──
+    document.querySelector('#addModal form')
+        .action = '../process/event_update.php';
+
+    // ── Isi semua field dengan data event ──
+
+    // Hidden ID
+    document.getElementById('id_event').value = data.id;
+
+    // Nama event
+    document.getElementById('edit_nama_event').value = data.title;
+
+    // Lokasi
+    document.getElementById('edit_location').value = data.location;
+
+    // Organizer
+    document.getElementById('edit_organizer').value = data.organizer;
+
+    // Deskripsi
+    document.getElementById('edit_description').value = data.description;
+
+    // Kategori (select)
+    document.querySelector('[name="category"]').value = data.cat;
+
+    // Status (select)
+    document.querySelector('[name="status"]').value = data.status;
+
+    // Harga
+    document.querySelector('[name="price"]').value = data.price;
+
+    // Tags
+    if (data.tags !== undefined) {
+        document.querySelector('[name="tags"]').value = data.tags;
+    }
+
+    // Tanggal — konversi dari "20 Jul 2025" → "2025-07-20"
+    document.querySelector('[name="event_date"]').value = convertDate(data.date);
+
+    // Waktu
+    if (data.time) {
+        document.querySelector('[name="event_time"]').value = data.time;
+    }
+
+    // Preview gambar lama
+    const imgWrap    = document.getElementById('currentImageWrap');
+    const imgPreview = document.getElementById('currentImage');
+    if (imgWrap && imgPreview) {
+        if (data.gambar) {
+            imgPreview.src       = '../uploads/events/' + data.gambar;
+            imgWrap.style.display = 'block';
+        } else {
+            imgWrap.style.display = 'none';
+        }
+    }
+}
+
+/*
+|--------------------------------------------------------------------------
+| CONVERT DATE
+|--------------------------------------------------------------------------
+*/
+
+function convertDate(dateString)
+{
+    const months = {
+        Jan:'01',
+        Feb:'02',
+        Mar:'03',
+        Apr:'04',
+        May:'05',
+        Jun:'06',
+        Jul:'07',
+        Aug:'08',
+        Sep:'09',
+        Oct:'10',
+        Nov:'11',
+        Dec:'12'
+    };
+
+    let parts = dateString.split(' ');
+
+    return `${parts[2]}-${months[parts[1]]}-${parts[0]}`;
+}
+
+function resetEventForm()
+{
+    // Reset form
+    document.querySelector('#addModal form').reset();
+
+    // Buka modal
+    openModal('addModal');
+
+    // Judul modal → Tambah Event Baru
+    document.querySelector('#addModal .modal-title')
+        .innerText = '➕ Tambah Event Baru';
+
+    // Tombol submit
+    document.querySelector('#addModal button[type="submit"]')
+        .innerText = 'Simpan Event';
+
+    // Action form → store
+    document.querySelector('#addModal form')
+        .action = '../process/event_store.php';
+
+    // Kosongkan hidden id
+    document.getElementById('id_event').value = '';
+
+    // Sembunyikan preview gambar lama
+    const imgWrap = document.getElementById('currentImageWrap');
+    if (imgWrap) imgWrap.style.display = 'none';
+
+    // Bersihkan ticket & schedule wrapper ke 1 row kosong
+    document.getElementById('ticketWrapper').innerHTML = `
+    <div class="ticket-item" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;margin-bottom:1rem;">
+        <input class="form-input" type="text"   name="ticket_name[]"  placeholder="VIP">
+        <input class="form-input" type="number" name="ticket_price[]" placeholder="500000">
+        <input class="form-input" type="number" name="ticket_stock[]" placeholder="100">
+    </div>`;
+
+    document.getElementById('scheduleWrapper').innerHTML = `
+    <div class="schedule-item" style="display:grid;grid-template-columns:1fr 2fr;gap:1rem;margin-bottom:1rem;">
+        <input type="text" name="schedule_jam[]"       class="form-input" placeholder="08:00">
+        <input type="text" name="schedule_kegiatan[]"  class="form-input" placeholder="Open Gate">
+    </div>`;
 }
 </script>
 </body>
