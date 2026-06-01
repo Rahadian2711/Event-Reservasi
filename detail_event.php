@@ -7,7 +7,12 @@ $page_title = 'Detail Event';
 $extra_css  = [BASE_URL . '/assets/css/home.css'];
 
 // Simulasi data event (ganti dengan query DB berdasarkan $_GET['id'])
-$id = $_GET['id'] ?? 0;
+$id = (int)($_GET['id'] ?? 0);
+
+if ($id <= 0) {
+    header('Location: ' . BASE_URL . '/index.php');
+    exit;
+}
 
 $query = mysqli_query($conn, "
     SELECT * FROM events
@@ -18,7 +23,8 @@ $query = mysqli_query($conn, "
 $event = mysqli_fetch_assoc($query);
 
 if (!$event) {
-    die("Event tidak ditemukan");
+    header('Location: ' . BASE_URL . '/index.php?notfound=1');
+    exit;
 }
 
 $tags = [];
@@ -88,48 +94,53 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $is_logged) {
     $category = mysqli_fetch_assoc($qCategory);
 
     if (!$category) {
-        $error = "Kategori tiket tidak ditemukan";
+        $error = "Kategori tiket tidak ditemukan.";
+
+    } elseif ($seats < 1 || $seats > 5) {
+        $error = "Jumlah kursi tidak valid (1–5).";
+
+    } elseif ((int)$category['stok'] < $seats) {
+        $error = "Stok tiket tidak mencukupi. Tersisa " . (int)$category['stok'] . " kursi.";
+
     } else {
 
-        $harga = $category['harga'];
+        $harga       = (int)$category['harga'];
         $total_harga = $harga * $seats;
 
-        // simpan reservasi
-        $insert = mysqli_query($conn, "
-            INSERT INTO reservations
-            (
-                id_user,
-                id_event,
-                id_category,
-                quantity,
-                total_harga,
-                status
-            )
-            VALUES
-            (
-                '$id_user',
-                '$id_event',
-                '$id_category',
-                '$seats',
-                '$total_harga',
-                'pending'
-            )
+        // Cek: pending yang belum upload bukti bayar sama sekali
+        $qDup = mysqli_query($conn, "
+            SELECT r.id_reservation
+            FROM reservations r
+            LEFT JOIN payments p ON r.id_reservation = p.id_reservation
+            WHERE r.id_user  = '$id_user'
+            AND   r.id_event = '$id_event'
+            AND   r.status   = 'pending'
+            AND   p.id_payment IS NULL
+            LIMIT 1
         ");
 
-        if ($insert) {
+        if (mysqli_fetch_assoc($qDup)) {
+            // Masih ada pending belum bayar → tolak
+            $error = "Kamu masih memiliki reservasi yang belum dibayar untuk event ini. Selesaikan pembayaran atau batalkan reservasi tersebut.";
 
-            // kurangi stok tiket
-            $new_stock = $category['stok'] - $seats;
-
-            mysqli_query($conn, "
-                UPDATE ticket_categories
-                SET stok = '$new_stock'
-                WHERE id_category = '$id_category'
+        } else {
+            // Aman → lanjut INSERT
+            $insert = mysqli_query($conn, "
+                INSERT INTO reservations
+                (id_user, id_event, id_category, quantity, total_harga, status)
+                VALUES ('$id_user', '$id_event', '$id_category', '$seats', '$total_harga', 'pending')
             ");
 
-            $success = "Reservasi berhasil!";
-        } else {
-            $error = "Gagal menyimpan reservasi";
+            if ($insert) {
+                mysqli_query($conn, "
+                    UPDATE ticket_categories
+                    SET stok = stok - $seats
+                    WHERE id_category = '$id_category' AND stok >= $seats
+                ");
+                $success = "Reservasi berhasil! Silakan selesaikan pembayaran.";
+            } else {
+                $error = "Gagal menyimpan reservasi. Silakan coba lagi.";
+            }
         }
     }
 }
@@ -142,11 +153,7 @@ function fmt_price($p) {
 
 <style>
 /* Detail page specific styles */
-.detail-hero {
-  background: linear-gradient(135deg, var(--white) 0%, var(--blue-50) 100%);
-  border-bottom: 1px solid var(--blue-100);
-  padding-block: var(--sp-10) var(--sp-8);
-}
+/* .detail-hero removed - not used */
 .detail-grid { display: grid; grid-template-columns: 1fr 380px; gap: var(--sp-8); align-items: start; padding-block: var(--sp-10); }
 .detail-img {
   width: 100%; height: 340px; border-radius: var(--r-xl);
@@ -243,7 +250,7 @@ function fmt_price($p) {
                 <?php if ($total_stok < 20): ?>
                   <span class="badge badge-red">⚡ Hampir habis</span>
                 <?php endif; ?>
-                <?php if ($ticket_categories[0]['harga'] == 0): ?>
+                <?php if (!empty($ticket_categories) && (int)$ticket_categories[0]['harga'] === 0): ?>
                   <span class="badge badge-green">Gratis</span>
                 <?php endif; ?>
               </div>
@@ -323,11 +330,11 @@ function fmt_price($p) {
             <div class="booking-card__header">
               <div class="booking-price-label">Harga per tiket</div>
               <div class="booking-price" id="ticketPrice">
-                <?= fmt_price($ticket_categories[0]['harga']) ?>
+                <?= !empty($ticket_categories) ? fmt_price((int)$ticket_categories[0]['harga']) : '-' ?>
               </div>
               <div class="booking-price-sub">
                 <span id="ticketStock">
-                  <?= $ticket_categories[0]['stok'] ?>
+                  <?= !empty($ticket_categories) ? (int)$ticket_categories[0]['stok'] : 0 ?>
                 </span>
                 kursi tersisa
               </div>
@@ -413,7 +420,7 @@ function fmt_price($p) {
                     <div class="booking-total">
                       <span class="booking-total-label">Total Pembayaran</span>
                       <span class="booking-total-val" id="totalPrice">
-    <?= fmt_price($ticket_categories[0]['harga']) ?>
+    <?= !empty($ticket_categories) ? fmt_price((int)$ticket_categories[0]['harga']) : 'Rp 0' ?>
 </span>
                     </div>
 

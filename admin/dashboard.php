@@ -53,6 +53,50 @@ $qUser = mysqli_query($conn, "
 ");
 
 $totalUser = mysqli_fetch_assoc($qUser)['total_user'];
+
+// TOTAL PENDING RESERVASI
+$qPending = mysqli_query($conn, "
+    SELECT COUNT(*) as total_pending
+    FROM reservations
+    WHERE status = 'pending'
+");
+$totalPending = (int)(mysqli_fetch_assoc($qPending)['total_pending'] ?? 0);
+
+// AKTIVITAS TERBARU dari DB
+$qActivity = mysqli_query($conn, "
+    SELECT
+        r.id_reservation,
+        r.status,
+        r.created_at,
+        u.nama  AS nama_user,
+        e.nama_event
+    FROM reservations r
+    LEFT JOIN users  u ON r.id_user  = u.id_user
+    LEFT JOIN events e ON r.id_event = e.id_event
+    ORDER BY r.created_at DESC
+    LIMIT 5
+");
+$activities_db = [];
+while ($row = mysqli_fetch_assoc($qActivity)) {
+    $icon = match($row['status']) {
+        'confirmed' => ['icon'=>'✅', 'bg'=>'#ECFDF5'],
+        'cancelled' => ['icon'=>'❌', 'bg'=>'#FEF2F2'],
+        default     => ['icon'=>'🎟', 'bg'=>'var(--blue-50)'],
+    };
+    $diff = time() - strtotime($row['created_at']);
+    if ($diff < 60)          $time_ago = $diff . ' detik lalu';
+    elseif ($diff < 3600)    $time_ago = floor($diff/60) . ' menit lalu';
+    elseif ($diff < 86400)   $time_ago = floor($diff/3600) . ' jam lalu';
+    else                     $time_ago = floor($diff/86400) . ' hari lalu';
+
+    $activities_db[] = [
+        'icon'  => $icon['icon'],
+        'bg'    => $icon['bg'],
+        'title' => htmlspecialchars($row['nama_user'] ?? '-') . ' reservasi ' . htmlspecialchars($row['nama_event'] ?? '-'),
+        'time'  => $time_ago,
+    ];
+}
+
 function short_number($num){
 
     if($num >= 1000000000){
@@ -303,19 +347,21 @@ $status_badge = [
           <li>
             <a href="<?= BASE_URL ?>/admin/events.php" class="sidebar-link" data-page="events.php">
               <?= svg_icon('calendar') ?> Events
-              <span class="sidebar-link__badge">48</span>
+              <span class="sidebar-link__badge"><?= $totalEvent ?></span>
             </a>
           </li>
           <li>
             <a href="<?= BASE_URL ?>/admin/reservations.php" class="sidebar-link" data-page="reservations.php">
               <?= svg_icon('list') ?> Reservasi
-              <span class="sidebar-link__badge sidebar-link__badge--red">12</span>
+              <?php if ($totalPending > 0): ?>
+              <span class="sidebar-link__badge sidebar-link__badge--red"><?= $totalPending ?></span>
+              <?php endif; ?>
             </a>
           </li>
           <li>
             <a href="<?= BASE_URL ?>/admin/users.php" class="sidebar-link" data-page="users.php">
               <?= svg_icon('user') ?> Users
-              <span class="sidebar-link__badge">3.8K</span>
+              <span class="sidebar-link__badge"><?= $totalUser ?></span>
             </a>
           </li>
         </ul>
@@ -499,15 +545,7 @@ $status_badge = [
         <div class="widget-card">
           <div class="widget-header">🔔 Aktivitas Terbaru</div>
           <div class="widget-body">
-            <?php
-            $activities = [
-              ['icon'=>'🎟','title'=>'Reservasi baru oleh Budi S.',  'time'=>'5 menit lalu',  'bg'=>'var(--blue-50)'],
-              ['icon'=>'👤','title'=>'User baru: sari@email.com',    'time'=>'12 menit lalu', 'bg'=>'#ECFDF5'],
-              ['icon'=>'✅','title'=>'Event Tech Summit disetujui',   'time'=>'1 jam lalu',    'bg'=>'#ECFDF5'],
-              ['icon'=>'❌','title'=>'Reservasi RES-004 dibatalkan', 'time'=>'2 jam lalu',    'bg'=>'#FEF2F2'],
-            ];
-            foreach ($activities as $act):
-            ?>
+            <?php foreach ($activities_db as $act): ?>
               <div class="activity-item">
                 <div class="activity-icon" style="background:<?= $act['bg'] ?>"><?= $act['icon'] ?></div>
                 <div class="activity-text">
