@@ -3,7 +3,8 @@ session_start();
 define('BASE_URL', '..');
 
 if (!isset($_SESSION['user_id']) || ($_SESSION['user_role'] ?? '') !== 'admin') {
-  header('Location: ' . BASE_URL . '/login.php'); exit;
+    header('Location: ' . BASE_URL . '/login.php');
+    exit;
 }
 
 $page_title  = 'Kelola Events';
@@ -37,26 +38,27 @@ $events = [];
 
 while ($row = mysqli_fetch_assoc($result)) {
 
-  $events[] = [
-    'id'     => $row['id_event'],
-    'title'  => $row['nama_event'],
-    'date'   => date('d M Y', strtotime($row['tanggal'])),
-    'cat'    => $row['kategori'],
-    'price'  => $row['harga_mulai'],
-    'sold'   => 0,
-    'slots'  => $row['total_stok'],
-    'status'     => $row['status'],
-    'gambar'     => $row['gambar'],
-    'location'   => $row['lokasi'],
-    'organizer'  => $row['organizer'],
-    'description'=> $row['deskripsi'],
-    'time'       => date('H:i', strtotime($row['tanggal'])),
-    'tags'       => $row['tags'] ?? ''
-  ];
+    $events[] = [
+      'id'     => $row['id_event'],
+      'title'  => $row['nama_event'],
+      'date'   => date('d M Y', strtotime($row['tanggal'])),
+      'cat'    => $row['kategori'],
+      'price'  => $row['harga_mulai'],
+      'sold'   => 0,
+      'slots'  => $row['total_stok'],
+      'status'     => $row['status'],
+      'gambar'     => $row['gambar'],
+      'location'   => $row['lokasi'],
+      'organizer'  => $row['organizer'],
+      'description' => $row['deskripsi'],
+      'time'       => date('H:i', strtotime($row['tanggal'])),
+      'tags'       => $row['tags'] ?? ''
+    ];
 }
 
-function fmt_price($p) {
-  return $p > 0 ? 'Rp ' . number_format($p, 0, ',', '.') : 'Gratis';
+function fmt_price($p)
+{
+    return $p > 0 ? 'Rp ' . number_format($p, 0, ',', '.') : 'Gratis';
 }
 
 // Action param
@@ -211,26 +213,26 @@ $action = $_GET['action'] ?? '';
           </thead>
           <tbody>
             <?php foreach ($events as $i => $ev):
-              $pct = round($ev['sold'] / max(1, $ev['sold'] + $ev['slots']) * 100);
-            ?>
+                $pct = round($ev['sold'] / max(1, $ev['sold'] + $ev['slots']) * 100);
+                ?>
               <tr>
                 <td><input type="checkbox" style="accent-color:var(--color-primary)"></td>
                 <td>
                   <div class="table-avatar">
                     <div class="table-avatar-img" style="border-radius:var(--r-md);font-size:1.1rem;background:var(--blue-100);">
                         <?php
-                        $catIcons = [
-                            'Music'=>'🎵','Technology'=>'💻','Design'=>'🎨',
-                            'Business'=>'🚀','Art'=>'🖼️','Culinary'=>'🍜',
-                            'Sport'=>'⚽','Education'=>'📚','Film'=>'🎬',
-                            'Gaming'=>'🎮','Health'=>'❤️','Fashion'=>'👗',
-                        ];
-                        echo $catIcons[$ev['cat']] ?? '🎟';
-                        ?>
+                            $catIcons = [
+                                'Music' => '🎵','Technology' => '💻','Design' => '🎨',
+                                'Business' => '🚀','Art' => '🖼️','Culinary' => '🍜',
+                                'Sport' => '⚽','Education' => '📚','Film' => '🎬',
+                                'Gaming' => '🎮','Health' => '❤️','Fashion' => '👗',
+                            ];
+                echo $catIcons[$ev['cat']] ?? '🎟';
+                ?>
                     </div>
                     <div>
                       <div class="table-name"><?= htmlspecialchars($ev['title']) ?></div>
-                      <div class="table-sub">ID: EV-<?= str_pad($ev['id'],3,'0',STR_PAD_LEFT) ?></div>
+                      <div class="table-sub">ID: EV-<?= str_pad($ev['id'], 3, '0', STR_PAD_LEFT) ?></div>
                     </div>
                   </div>
                 </td>
@@ -249,7 +251,7 @@ $action = $_GET['action'] ?? '';
                   </div>
                 </td>
                 <td>
-                  <span class="badge <?= $ev['status']==='published' ? 'badge-green' : 'badge-gray' ?>">
+                  <span class="badge <?= $ev['status'] === 'published' ? 'badge-green' : 'badge-gray' ?>">
                     <?= $ev['status'] === 'published' ? 'Published' : 'Draft' ?>
                   </span>
                 </td>

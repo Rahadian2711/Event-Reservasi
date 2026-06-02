@@ -1,4 +1,6 @@
 /uploads/payments/
+/uploads/events/
 /vendor/
 /node_modules/
 .env
+.php-cs-fixer.cache
