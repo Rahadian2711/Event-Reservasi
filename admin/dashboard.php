@@ -1,13 +1,14 @@
 <?php
 session_start();
+date_default_timezone_set('Asia/Jakarta');
 define('BASE_URL', '..');
 
 require_once '../config/koneksi.php';
 
 // Guard: only admin
 if (!isset($_SESSION['user_id']) || ($_SESSION['user_role'] ?? '') !== 'admin') {
-  header('Location: ' . BASE_URL . '/login.php');
-  exit;
+    header('Location: ' . BASE_URL . '/login.php');
+    exit;
 }
 
 $page_title = 'Dashboard Admin';
@@ -74,20 +75,25 @@ $qActivity = mysqli_query($conn, "
     LEFT JOIN users  u ON r.id_user  = u.id_user
     LEFT JOIN events e ON r.id_event = e.id_event
     ORDER BY r.created_at DESC
-    LIMIT 5
+    LIMIT 3
 ");
 $activities_db = [];
 while ($row = mysqli_fetch_assoc($qActivity)) {
     $icon = match($row['status']) {
-        'confirmed' => ['icon'=>'✅', 'bg'=>'#ECFDF5'],
-        'cancelled' => ['icon'=>'❌', 'bg'=>'#FEF2F2'],
-        default     => ['icon'=>'🎟', 'bg'=>'var(--blue-50)'],
+        'confirmed' => ['icon' => '✅', 'bg' => '#ECFDF5'],
+        'cancelled' => ['icon' => '❌', 'bg' => '#FEF2F2'],
+        default     => ['icon' => '🎟', 'bg' => 'var(--blue-50)'],
     };
     $diff = time() - strtotime($row['created_at']);
-    if ($diff < 60)          $time_ago = $diff . ' detik lalu';
-    elseif ($diff < 3600)    $time_ago = floor($diff/60) . ' menit lalu';
-    elseif ($diff < 86400)   $time_ago = floor($diff/3600) . ' jam lalu';
-    else                     $time_ago = floor($diff/86400) . ' hari lalu';
+    if ($diff < 60) {
+        $time_ago = $diff . ' detik lalu';
+    } elseif ($diff < 3600) {
+        $time_ago = floor($diff / 60) . ' menit lalu';
+    } elseif ($diff < 86400) {
+        $time_ago = floor($diff / 3600) . ' jam lalu';
+    } else {
+        $time_ago = floor($diff / 86400) . ' hari lalu';
+    }
 
     $activities_db[] = [
         'icon'  => $icon['icon'],
@@ -97,17 +103,18 @@ while ($row = mysqli_fetch_assoc($qActivity)) {
     ];
 }
 
-function short_number($num){
+function short_number($num)
+{
 
-    if($num >= 1000000000){
+    if ($num >= 1000000000) {
         return number_format($num / 1000000000, 1) . ' M';
     }
 
-    if($num >= 1000000){
+    if ($num >= 1000000) {
         return number_format($num / 1000000, 1) . ' Jt';
     }
 
-    if($num >= 1000){
+    if ($num >= 1000) {
         return number_format($num / 1000, 1) . ' K';
     }
 
@@ -116,39 +123,39 @@ function short_number($num){
 $stats = [
 
   [
-    'label'=>'Total Event',
-    'value'=>$totalEvent,
-    'change'=>'+12%',
-    'up'=>true,
-    'type'=>'blue',
-    'icon'=>'calendar'
+    'label' => 'Total Event',
+    'value' => $totalEvent,
+    'change' => '+12%',
+    'up' => true,
+    'type' => 'blue',
+    'icon' => 'calendar'
   ],
 
   [
-    'label'=>'Reservasi Aktif',
-    'value'=>$totalReservasi,
-    'change'=>'+8%',
-    'up'=>true,
-    'type'=>'green',
-    'icon'=>'ticket'
+    'label' => 'Reservasi Aktif',
+    'value' => $totalReservasi,
+    'change' => '+8%',
+    'up' => true,
+    'type' => 'green',
+    'icon' => 'ticket'
   ],
 
   [
-    'label'=>'Pendapatan Bulan',
-    'value'=>'Rp ' . short_number($totalPendapatan),
-    'change'=>'+23%',
-    'up'=>true,
-    'type'=>'yellow',
-    'icon'=>'money'
+    'label' => 'Pendapatan Bulan',
+    'value' => 'Rp ' . short_number($totalPendapatan),
+    'change' => '+23%',
+    'up' => true,
+    'type' => 'yellow',
+    'icon' => 'money'
   ],
 
   [
-    'label'=>'Users Terdaftar',
-    'value'=>$totalUser,
-    'change'=>'+5%',
-    'up'=>true,
-    'type'=>'blue',
-    'icon'=>'users'
+    'label' => 'Users Terdaftar',
+    'value' => $totalUser,
+    'change' => '+5%',
+    'up' => true,
+    'type' => 'blue',
+    'icon' => 'users'
   ],
 
 ];
@@ -185,7 +192,7 @@ LIMIT 5
 
 $recent_reservations = [];
 
-while($row = mysqli_fetch_assoc($qRecent)){
+while ($row = mysqli_fetch_assoc($qRecent)) {
 
     $recent_reservations[] = [
 
@@ -244,7 +251,7 @@ LIMIT 3
 
 $recent_events = [];
 
-while($row = mysqli_fetch_assoc($qTop)){
+while ($row = mysqli_fetch_assoc($qTop)) {
 
     $sold = $row['total_sold'] ?? 0;
 
@@ -266,45 +273,47 @@ while($row = mysqli_fetch_assoc($qTop)){
 
     ];
 }
-function fmt_price($p) {
-  return $p > 0 ? 'Rp ' . number_format($p, 0, ',', '.') : 'Gratis';
+function fmt_price($p)
+{
+    return $p > 0 ? 'Rp ' . number_format($p, 0, ',', '.') : 'Gratis';
 }
 
-function svg_icon($name) {
-  $icons = [
-    'calendar' => '<rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>',
-    'ticket'   => '<path d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"/>',
-    'money'    => '<line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>',
-    'users'    => '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
-    'home'     => '<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>',
-    'list'     => '<line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>',
-    'grid'     => '<rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>',
-    'chart'    => '<line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>',
-    'settings' => '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>',
-    'logout'   => '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>',
-    'plus'     => '<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>',
-    'user'     => '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
-    'bell'     => '<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>',
-  ];
-  $path = $icons[$name] ?? '';
-  return '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'.$path.'</svg>';
+function svg_icon($name)
+{
+    $icons = [
+      'calendar' => '<rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>',
+      'ticket'   => '<path d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"/>',
+      'money'    => '<line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>',
+      'users'    => '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+      'home'     => '<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>',
+      'list'     => '<line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>',
+      'grid'     => '<rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>',
+      'chart'    => '<line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>',
+      'settings' => '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>',
+      'logout'   => '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>',
+      'plus'     => '<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>',
+      'user'     => '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
+      'bell'     => '<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>',
+    ];
+    $path = $icons[$name] ?? '';
+    return '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'.$path.'</svg>';
 }
 
 $status_badge = [
 
   'confirmed' => [
-      'class'=>'badge-green',
-      'label'=>'Confirmed'
+      'class' => 'badge-green',
+      'label' => 'Confirmed'
   ],
 
   'pending' => [
-      'class'=>'badge-yellow',
-      'label'=>'Pending'
+      'class' => 'badge-yellow',
+      'label' => 'Pending'
   ],
 
   'cancelled' => [
-      'class'=>'badge-red',
-      'label'=>'Cancelled'
+      'class' => 'badge-red',
+      'label' => 'Cancelled'
   ],
 
 ];
@@ -416,7 +425,7 @@ $status_badge = [
     <div class="admin-page-header fade-up">
       <div>
         <h1 class="admin-page-title">Dashboard</h1>
-        <p class="admin-page-sub">Selamat datang kembali, <?= htmlspecialchars(explode(' ',$admin_name)[0]) ?> 👋 — Ini ringkasan hari ini.</p>
+        <p class="admin-page-sub">Selamat datang kembali, <?= htmlspecialchars(explode(' ', $admin_name)[0]) ?> 👋 — Ini ringkasan hari ini.</p>
       </div>
       <div class="admin-page-actions">
         <span style="font-size:var(--text-xs);color:var(--color-text-muted);">
@@ -434,9 +443,9 @@ $status_badge = [
         <div class="stat-card stat-card--<?= $stat['type'] ?>">
           <div class="stat-card__icon">
             <?php
-            $si = ['calendar'=>'<rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>','ticket'=>'<path d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"/>','money'=>'<line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>','users'=>'<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>'];
-            echo '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'.($si[$stat['icon']]??'').'</svg>';
-            ?>
+            $si = ['calendar' => '<rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>','ticket' => '<path d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"/>','money' => '<line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>','users' => '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>'];
+          echo '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'.($si[$stat['icon']] ?? '').'</svg>';
+          ?>
           </div>
           <div class="stat-card__body">
             <div class="stat-card__label"><?= htmlspecialchars($stat['label']) ?></div>
@@ -481,9 +490,9 @@ $status_badge = [
             </thead>
             <tbody>
               <?php foreach ($recent_reservations as $res):
-                $st = $status_badge[$res['status']] ?? ['class'=>'badge-gray','label'=>$res['status']];
-                $ini = strtoupper(substr($res['user'],0,1));
-              ?>
+                  $st = $status_badge[$res['status']] ?? ['class' => 'badge-gray','label' => $res['status']];
+                  $ini = strtoupper(substr($res['user'], 0, 1));
+                  ?>
                 <tr>
                   <td>
                     <div class="table-avatar">
@@ -525,7 +534,7 @@ $status_badge = [
                   <span style="font-size:var(--text-xs);color:var(--color-text-muted);flex-shrink:0;"><?= $ev['date'] ?></span>
                 </div>
                 <!-- Progress bar -->
-                <?php $pct = min(100,round(($ev['sold'] / max(1, $ev['slots'])) * 100)); ?>
+                <?php $pct = min(100, round(($ev['sold'] / max(1, $ev['slots'])) * 100)); ?>
                 <div style="display:flex;align-items:center;gap:0.5rem;">
                   <div style="flex:1;height:6px;background:var(--blue-100);border-radius:99px;overflow:hidden;">
                     <div style="height:100%;width:<?= $pct ?>%;background:var(--grad-brand);border-radius:99px;transition:width 0.6s ease;"></div>

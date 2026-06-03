@@ -38,21 +38,39 @@ $events = [];
 
 while ($row = mysqli_fetch_assoc($result)) {
 
+    $id_ev = $row['id_event'];
+
+    // Ambil ticket categories untuk event ini
+    $qTicket  = mysqli_query($conn, "SELECT nama_kategori, harga, stok FROM ticket_categories WHERE id_event = '$id_ev' ORDER BY id_category ASC");
+    $tickets  = [];
+    while ($t = mysqli_fetch_assoc($qTicket)) {
+        $tickets[] = ['name' => $t['nama_kategori'], 'price' => (int)$t['harga'], 'stock' => (int)$t['stok']];
+    }
+
+    // Ambil schedule untuk event ini
+    $qSched = mysqli_query($conn, "SELECT jam, kegiatan FROM event_schedule WHERE id_event = '$id_ev' ORDER BY jam ASC");
+    $schedules = [];
+    while ($s = mysqli_fetch_assoc($qSched)) {
+        $schedules[] = ['jam' => $s['jam'], 'kegiatan' => $s['kegiatan']];
+    }
+
     $events[] = [
-      'id'     => $row['id_event'],
-      'title'  => $row['nama_event'],
-      'date'   => date('d M Y', strtotime($row['tanggal'])),
-      'cat'    => $row['kategori'],
-      'price'  => $row['harga_mulai'],
-      'sold'   => 0,
-      'slots'  => $row['total_stok'],
-      'status'     => $row['status'],
-      'gambar'     => $row['gambar'],
-      'location'   => $row['lokasi'],
-      'organizer'  => $row['organizer'],
+      'id'          => $id_ev,
+      'title'       => $row['nama_event'],
+      'date'        => date('d M Y', strtotime($row['tanggal'])),
+      'cat'         => $row['kategori'],
+      'price'       => $row['harga_mulai'],
+      'sold'        => 0,
+      'slots'       => $row['total_stok'],
+      'status'      => $row['status'],
+      'gambar'      => $row['gambar'],
+      'location'    => $row['lokasi'],
+      'organizer'   => $row['organizer'],
       'description' => $row['deskripsi'],
-      'time'       => date('H:i', strtotime($row['tanggal'])),
-      'tags'       => $row['tags'] ?? ''
+      'time'        => date('H:i', strtotime($row['tanggal'])),
+      'tags'        => $row['tags'] ?? '',
+      'tickets'     => $tickets,
+      'schedules'   => $schedules,
     ];
 }
 
@@ -752,12 +770,55 @@ function editEvent(data)
     const imgPreview = document.getElementById('currentImage');
     if (imgWrap && imgPreview) {
         if (data.gambar) {
-            imgPreview.src       = '../uploads/events/' + data.gambar;
+            imgPreview.src        = '../uploads/events/' + data.gambar;
             imgWrap.style.display = 'block';
         } else {
             imgWrap.style.display = 'none';
         }
     }
+
+    // ── Isi Ticket Categories ──
+    const ticketWrapper = document.getElementById('ticketWrapper');
+    ticketWrapper.innerHTML = '';
+
+    const tickets = data.tickets && data.tickets.length > 0
+        ? data.tickets
+        : [{ name: '', price: '', stock: '' }]; // minimal 1 row kosong
+
+    tickets.forEach(ticket => {
+        ticketWrapper.insertAdjacentHTML('beforeend', `
+        <div class="ticket-item" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;margin-bottom:1rem;">
+            <input class="form-input" type="text"   name="ticket_name[]"  placeholder="VIP"    value="${escHtml(ticket.name)}">
+            <input class="form-input" type="number" name="ticket_price[]" placeholder="500000" value="${ticket.price}">
+            <input class="form-input" type="number" name="ticket_stock[]" placeholder="100"    value="${ticket.stock}">
+        </div>`);
+    });
+
+    // ── Isi Event Schedule ──
+    const scheduleWrapper = document.getElementById('scheduleWrapper');
+    scheduleWrapper.innerHTML = '';
+
+    const schedules = data.schedules && data.schedules.length > 0
+        ? data.schedules
+        : [{ jam: '', kegiatan: '' }]; // minimal 1 row kosong
+
+    schedules.forEach(sch => {
+        scheduleWrapper.insertAdjacentHTML('beforeend', `
+        <div class="schedule-item" style="display:grid;grid-template-columns:1fr 2fr;gap:1rem;margin-bottom:1rem;">
+            <input type="text" name="schedule_jam[]"      class="form-input" placeholder="08:00"     value="${escHtml(sch.jam)}">
+            <input type="text" name="schedule_kegiatan[]" class="form-input" placeholder="Open Gate" value="${escHtml(sch.kegiatan)}">
+        </div>`);
+    });
+}
+
+// Helper: escape HTML untuk value attribute
+function escHtml(str) {
+    if (!str) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/"/g, '&quot;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
 }
 
 /*

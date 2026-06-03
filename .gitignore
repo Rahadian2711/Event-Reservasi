@@ -1,5 +1,5 @@
-/uploads/payments/
 /uploads/events/
+/uploads/payments/
 /vendor/
 /node_modules/
 .env

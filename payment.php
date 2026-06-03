@@ -92,7 +92,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $filename = 'PAY-' . $id_reservation . '-' . time() . '.' . strtolower($ext);
             $dir      = __DIR__ . '/uploads/payments/';
 
-            if (!is_dir($dir)) mkdir($dir, 0755, true);
+            if (!is_dir($dir)) {
+                mkdir($dir, 0755, true);
+            }
 
             if (move_uploaded_file($file['tmp_name'], $dir . $filename)) {
                 $metode_safe   = mysqli_real_escape_string($conn, $metode);
@@ -131,18 +133,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 /* ── Helpers ── */
-function fmt_price(int $p): string {
+function fmt_price(int $p): string
+{
     return $p > 0 ? 'Rp ' . number_format($p, 0, ',', '.') : 'Gratis';
 }
-function fmt_date(string $d): string {
+function fmt_date(string $d): string
+{
     return date('d F Y', strtotime($d));
 }
-function fmt_time(string $d): string {
+function fmt_time(string $d): string
+{
     return date('H:i', strtotime($d)) . ' WIB';
 }
 
 /* ── Countdown: 24 jam dari created_at ── */
-$deadline_ts   = strtotime($res['tanggal_booking']) + (2*60*60);
+$deadline_ts   = strtotime($res['tanggal_booking']) + (2 * 60 * 60);
 $deadline_disp = date('H:i', $deadline_ts);
 
 /* ── AUTO CANCEL jika waktu habis ── */
@@ -786,12 +791,12 @@ $extra_css   = [];
 
                   <?php
                   $banks = [
-                    'BCA'    => ['logo'=>'🔵', 'norek'=>'1234-5678-9012', 'atas_nama'=>'EventRes Indonesia', 'color'=>'#005BAC'],
-                    'Mandiri'=> ['logo'=>'🟡', 'norek'=>'1170-0123-4567-89', 'atas_nama'=>'EventRes Indonesia', 'color'=>'#003D6B'],
-                    'BNI'    => ['logo'=>'🟠', 'norek'=>'0987-6543-210', 'atas_nama'=>'EventRes Indonesia', 'color'=>'#F37021'],
+                    'BCA'    => ['logo' => '🔵', 'norek' => '1234-5678-9012', 'atas_nama' => 'EventRes Indonesia', 'color' => '#005BAC'],
+                    'Mandiri' => ['logo' => '🟡', 'norek' => '1170-0123-4567-89', 'atas_nama' => 'EventRes Indonesia', 'color' => '#003D6B'],
+                    'BNI'    => ['logo' => '🟠', 'norek' => '0987-6543-210', 'atas_nama' => 'EventRes Indonesia', 'color' => '#F37021'],
                   ];
-                  foreach ($banks as $bank => $info):
-                  ?>
+foreach ($banks as $bank => $info):
+    ?>
                   <label class="pm-card">
                     <input type="radio" name="metode_pembayaran" value="<?= $bank ?>"
                            data-norek="<?= $info['norek'] ?>"
@@ -814,13 +819,13 @@ $extra_css   = [];
                 <div class="pm-grid">
 
                   <?php
-                  $wallets = [
-                    'DANA' => ['logo'=>'💙', 'norek'=>'0812-3456-7890', 'atas_nama'=>'EventRes Official'],
-                    'OVO'  => ['logo'=>'💜', 'norek'=>'0821-9876-5432', 'atas_nama'=>'EventRes Official'],
-                    'GoPay'=> ['logo'=>'💚', 'norek'=>'0857-1234-5678', 'atas_nama'=>'EventRes Official'],
-                  ];
-                  foreach ($wallets as $wallet => $info):
-                  ?>
+    $wallets = [
+      'DANA' => ['logo' => '💙', 'norek' => '0812-3456-7890', 'atas_nama' => 'EventRes Official'],
+      'OVO'  => ['logo' => '💜', 'norek' => '0821-9876-5432', 'atas_nama' => 'EventRes Official'],
+      'GoPay' => ['logo' => '💚', 'norek' => '0857-1234-5678', 'atas_nama' => 'EventRes Official'],
+    ];
+foreach ($wallets as $wallet => $info):
+    ?>
                   <label class="pm-card">
                     <input type="radio" name="metode_pembayaran" value="<?= $wallet ?>"
                            data-norek="<?= $info['norek'] ?>"
